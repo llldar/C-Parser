@@ -42,20 +42,17 @@ void reslove(std::deque<token> &tokens)
     
     while (std::cin.get(cur_char)) {
         switch (cur_char) {
-                //TODO handle < > as bool symbol
             case '<':
                 tag_text.clear();
                 in_xml_tag = true;
                 break;
             case '>':
                 in_xml_tag = false;
-                
                 break;
             default:
                 if (in_xml_tag) {
                     tag_text.push_back(cur_char);
                 }else{
-                    
                     if (tag_text == "token") {
                         //init token
                         n_tkn.number = 0;

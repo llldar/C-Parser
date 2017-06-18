@@ -90,8 +90,8 @@ bool function(node &root)
     bool res = false;
     node temp;
     temp.add_attribute("FUNCTION");
-    //FUNCTION -> TYPE IDENTIFIER( ARGS ) ;
-    //         -> TYPE IDENTIFIER( ARGS ) { STMTS }
+    //FUNCTION -> TYPE ID ( ARGS ) ;
+    //         -> TYPE ID ( ARGS ) { STMTS }
     if (type(temp)) {//TYPE
         if (identifier(temp)) {//IDENTIFIER
             if(tokens.front().value.front() == '('){// (
@@ -309,6 +309,8 @@ bool statements(node &root)
     bool res = false;
     node temp;
     temp.add_attribute("STMTS");
+    //STMTS -> STMT STMTS
+    //      -> NULL
     if (tokens.front().value.front() == '}') {//STMTS -> NULL
         temp.add_value("");
         res = true;
@@ -332,6 +334,10 @@ bool statement(node &root)
     bool res = false;
     node temp;
     temp.add_attribute("STMT");
+    //STMT -> RET_STMT
+    //     -> FOR_STMT
+    //     -> IF_STMT
+    //     -> EXP_STMT
     if (tokens.front().value == "return") {
         if (ret_stmt(temp)) {
             res = true;
@@ -366,7 +372,7 @@ bool ret_stmt(node &root)
     bool res = false;
     node temp;
     temp.add_attribute("RET_STMT");
-    //RETURN_STMT -> RETURN EXPR_STMT
+    //RET_STMT -> RETURN EXP_STMT
     if (tokens.front().value == "return") {
         keyword(temp);
         if (exp_stmt(temp)) {
@@ -381,8 +387,8 @@ bool ret_stmt(node &root)
 
 bool if_stmt(node &root)
 {
-    //IF_STMT -> IF ( COND ) { STMTS }
-    //        -> IF ( COND ) { STMTS } ELSE { STMTS }
+    //IF_STMT -> IF ( CND_EXP ) { STMTS }
+    //        -> IF ( CND_EXP ) { STMTS } ELSE { STMTS }
     bool res = false;
     node temp;
     temp.add_attribute("IF_STMT");
@@ -585,20 +591,20 @@ bool ury_exp(node &root)
     bool res = false;
     node temp;
     temp.add_attribute("URY_EXP");
-    //URY_EXP -> ++URY_EXP
-    //        -> --URY_EXP
+    //URY_EXP -> ++PMRY_EXP
+    //        -> --PMRY_EXP
     //        -> POST_EXP
     if (tokens.front().type == types::OPT) {
         if (tokens.front().value == "++") {
             _operator(temp);
-            if (ury_exp(temp)) {
+            if (pmry_exp(temp)) {
                 res = true;
             }else{
                 std::cerr<<"Complie Error,Invalid unary expression near "; cast_context(CAST_LENGTH);
             }
         }else if (tokens.front().value == "--") {
             _operator(temp);
-            if (ury_exp(temp)) {
+            if (pmry_exp(temp)) {
                 res = true;
             }else{
                 std::cerr<<"Complie Error,Invalid unary expression near "; cast_context(CAST_LENGTH);
@@ -624,7 +630,7 @@ bool def_exp(node &root)
     node temp;
     temp.add_attribute("DEF_EXP");
     //DEF_EXP -> TYPE ASN_EXP
-    //
+    //        -> TYPE PMRY_EXP
     if (type(temp)) {
         if (look_ahead({";",")","}"}, [](std::string s){return (s == "=");})) {
             if(asn_exp(temp)){
@@ -786,11 +792,12 @@ bool post_exp(node &root)
     //POST_EXP -> PMRY_EXP
     //         -> PMRY_EXP++
     //         -> PMRY_EXP--
+    //         -> PMRY_EXP[DGT]
     
-    if (!look_ahead({";"},[](std::string s){ return s == ";"; })) {
+    if (look_ahead({";",")"},[](std::string s){ return s == "++" || s == "--" || s == "[" || s == "]"; })) {
         if (tokens[1].value == "++") {
             //POST_EXP -> POST_EXP++
-            if (post_exp(temp)) {
+            if (pmry_exp(temp)) {
                 if (tokens.front().value == "++") {
                     _operator(temp);
                     res = true;
@@ -798,15 +805,15 @@ bool post_exp(node &root)
             }
         }else if (tokens[1].value == "--"){
             //POST_EXP -> POST_EXP--
-            if (post_exp(temp)) {
+            if (pmry_exp(temp)) {
                 if (tokens.front().value == "--") {
                     _operator(temp);
                     res = true;
                 }
             }
         }else if (tokens[1].value == "["){
-            //POST_EXP -> POST_EXP [ DGT ]
-            if (post_exp(temp)) {
+            //POST_EXP -> PMRY_EXP [ DGT ]
+            if (pmry_exp(temp)) {
                 if (tokens.front().value.front() == '[') {
                     separator(temp);
                     if (tokens.front().type == types::DGT) {
