@@ -18,12 +18,12 @@ void XML::add_child(node n)
 void XML::print_all(std::string xml_name)
 {
     std::cout<<header<<std::endl;
-    std::cout<<"<ParserTree name=\""<<xml_name<<"\">"<<std::endl;
+    std::cout<<"<ParseTree name=\""<<xml_name<<"\">"<<std::endl;
     for(node n:childs)
     {
         n.print(1);
     }
-    std::cout<<"</ParserTree>"<<std::endl;
+    std::cout<<"</ParseTree>"<<std::endl;
 }
 
 void node::add_attribute(std::string attribute)
