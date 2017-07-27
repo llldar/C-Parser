@@ -17,6 +17,8 @@ bool functions(node &root);
 bool function(node &root);
 bool statement(node &root);
 bool type(node &root);
+bool def_args(node &root);
+bool def_arg(node &root);
 bool args(node &root);
 bool arg(node &root);
 
@@ -47,13 +49,14 @@ bool mul_exp(node &root);
 bool post_exp(node &root);
 bool pmry_exp(node &root);
 
+bool func_call(node &root);
 bool term(node &root);
 
 bool is_asn_opt(std::string opt);
 bool is_type(std::string v);
 bool is_cmp_opt(std::string opt);
 void cast_context(size_t n);
-bool look_ahead(std::vector<std::string> stop_symbols,bool (*is_target)(std::string));
-
+bool look_ahead_str(std::vector<std::string> stop_symbols,bool (*is_target)(std::string));
+bool look_ahead_func(std::vector<std::string> stop_symbols);
 
 #endif /* Paser_h */

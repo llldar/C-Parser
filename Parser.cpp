@@ -28,7 +28,7 @@ int main(int argc, const char * argv[]) {
     node root;
     if(!program(root))
     {
-        std::cerr<<"Complie Error, meeting unexpected EOF."<<std::endl;
+        std::cerr<<"Complie Error,meeting unexpected EOF."<<std::endl;
     }
     if (!tokens.empty()) {
         std::cerr<<"Potential Complie Error,input stream not empty."<<std::endl;
@@ -67,7 +67,6 @@ bool functions(node &root)
     //          -> NULL
     if (tokens.front().type == types::EOT) {//FUNCTIONS -> NULL
         res = true;
-        temp.add_value("");
     }else{//FUNCTIONS -> FUNCTION FUNCTIONS
         if (function(temp)) {
             if (functions(temp)) {
@@ -90,13 +89,13 @@ bool function(node &root)
     bool res = false;
     node temp;
     temp.add_attribute("FUNCTION");
-    //FUNCTION -> TYPE ID ( ARGS ) ;
-    //         -> TYPE ID ( ARGS ) { STMTS }
+    //FUNCTION -> TYPE ID ( DEF_ARGS ) ;
+    //         -> TYPE ID ( DEF_ARGS ) { STMTS }
     if (type(temp)) {//TYPE
         if (identifier(temp)) {//IDENTIFIER
             if(tokens.front().value.front() == '('){// (
                 separator(temp);
-                if (args(temp)) {// ARGS
+                if (def_args(temp)) {// ARGS
                     if(tokens.front().value.front() == ')'){ // )
                         separator(temp);
                         //function declaration
@@ -116,7 +115,7 @@ bool function(node &root)
                                 std::cerr<<"Complie Error,Invalid statments structure near "; cast_context(CAST_LENGTH);
                             }
                         }else{
-                            std::cerr<<"Complie Error,Invalid argument after function head near "; cast_context(CAST_LENGTH);
+                            std::cerr<<"Complie Error,Invalid def argument after function head near "; cast_context(CAST_LENGTH);
                         }
                     }else{
                         std::cerr<<"Complie Error, ) missing near "; cast_context(CAST_LENGTH);
@@ -154,8 +153,7 @@ bool type(node &root)
     return res;
 }
 
-bool identifier(node &root)
-{
+bool identifier(node &root){
     bool res = false;
     node temp;
     temp.add_attribute("identifier");
@@ -250,26 +248,26 @@ bool digit(node &root)
     return res;
 }
 
-bool args(node &root)
+bool def_args(node &root)
 {
     bool res = false;
     node temp;
-    temp.add_attribute("ARGS");
-    //ARGS -> ARG , ARGS
-    //     -> ARG
+    temp.add_attribute("DEF_ARGS");
+    //DEF_ARGS -> DEF_ARG , DEF_ARGS
+    //     -> DEF_ARG
     //     -> NULL
     if (tokens.front().value.front() == ')') {
-        temp.add_value("");
+        
         res = true;
     }else{
-        if (arg(temp)) {
-            if (look_ahead({")"}, [](std::string s){return (s == ",");})) {
+        if (def_arg(temp)) {
+            if (look_ahead_str({")"}, [](std::string s){return (s == ",");})) {
                 if (tokens.front().value == ",") {
-                    separator(temp);
-                    if (args(temp)) {
+                    _operator(temp);
+                    if (def_args(temp)) {
                         res = true;
                     }else{
-                        std::cerr<<"Complie Error,Invalid arguments near "; cast_context(CAST_LENGTH);
+                        std::cerr<<"Complie Error,Invalid def arguments near "; cast_context(CAST_LENGTH);
                     }
                 }
             }else{
@@ -282,12 +280,12 @@ bool args(node &root)
     return res;
 }
 
-bool arg(node &root)
+bool def_arg(node &root)
 {
     bool res = false;
     node temp;
     temp.add_attribute("ARG");
-    //ARG -> TYPE ID
+    //DEF_ARG -> TYPE ID
     if(type(temp))
     {
         if (tokens.front().type == types::IDT) {
@@ -312,7 +310,7 @@ bool statements(node &root)
     //STMTS -> STMT STMTS
     //      -> NULL
     if (tokens.front().value.front() == '}') {//STMTS -> NULL
-        temp.add_value("");
+        
         res = true;
     }else{//STMTS -> STMT STMTS
         if (statement(temp)) {
@@ -540,35 +538,43 @@ bool exp(node &root)
     //    -> DEF_EXP
     //    -> CND_EXP
     //    -> URY_EXP
-    if (look_ahead({";",")","}"}, is_asn_opt)) {
-        if (is_type(tokens.front().value)) {
-            //EXP -> DEF_EXP
-            if(def_exp(temp)){
-                res = true;
-            }else{
-                std::cerr<<"Complie Error,Invalid definition expression near "; cast_context(CAST_LENGTH);
-            }
+    //    -> FUNC_CALL
+    if (is_type(tokens.front().value)) {
+        //EXP -> DEF_EXP
+        if(def_exp(temp)){
+            res = true;
         }else{
-            //EXP -> ASN_EXP
-            if(asn_exp(temp)){
-                res = true;
-            }else{
-                std::cerr<<"Complie Error,Invalid assignment expression near "; cast_context(CAST_LENGTH);
-            }
+            std::cerr<<"Complie Error,Invalid definition expression near "; cast_context(CAST_LENGTH);
         }
-    }else if(look_ahead({";",")","}"},is_cmp_opt)){
+    }else if (look_ahead_str({";",")","}"}, is_asn_opt)){
+        //EXP -> ASN_EXP
+        if(asn_exp(temp)){
+            res = true;
+        }else{
+            std::cerr<<"Complie Error,Invalid assignment expression near "; cast_context(CAST_LENGTH);
+        }
+    }else if(look_ahead_str({";",")","}"},is_cmp_opt)){
         //EXP -> CND_EXP
         if(cnd_exp(temp)){
             res = true;
         }else{
             std::cerr<<"Complie Error,Invalid conditional expression near "; cast_context(CAST_LENGTH);
         }
-    }else if(look_ahead({";",")","}"},[](std::string s){return (s =="++"||s=="--");})){
+    }else if(look_ahead_str({";",")","}"},[](std::string s){return (s =="++"||s=="--");})){
         //EXP -> URY_EXP
         if (ury_exp(temp)) {
             res = true;
         }else{
             std::cerr<<"Complie Error,Invalid unary expression near "; cast_context(CAST_LENGTH);
+        }
+    }else if(look_ahead_func({";",")","}"}))
+    {
+        //Make sure that idt( pattern have appeared
+        //EXP -> FUNC_CALL
+        if (func_call(temp)) {
+            res = true;
+        }else{
+            std::cerr<<"Complie Error,Invalid function call near "; cast_context(CAST_LENGTH);
         }
     }else{
         //EXP -> TERM ADD_EXP
@@ -581,6 +587,84 @@ bool exp(node &root)
         }else{
             std::cerr<<"Complie Error,Invalid term near "; cast_context(CAST_LENGTH);
         }
+    }
+    root.add_child(temp);
+    return res;
+}
+
+bool func_call(node &root)
+{
+    bool res = false;
+    node temp;
+    temp.add_attribute("FUNC_CALL");
+    //FUNC_CALL -> ID ( ARGS ) ;
+    if (tokens.front().type == types::IDT) {
+        identifier(temp);
+        if (tokens.front().value.front() == '(') {
+            separator(temp);
+            if (args(temp)) {
+                if (tokens.front().value.front() == ')') {
+                    separator(temp);
+                    res = true;
+                }else{
+                    std::cerr<<"Complie Error,Expected ) near "; cast_context(CAST_LENGTH);
+                }
+            }else{
+                std::cerr<<"Complie Error,Invalid arguments near "; cast_context(CAST_LENGTH);
+            }
+        }else{
+            std::cerr<<"Complie Error,Expected ( near "; cast_context(CAST_LENGTH);
+        }
+    }else{
+        std::cerr<<"Complie Error,Expected identifier near "; cast_context(CAST_LENGTH);
+    }
+    root.add_child(temp);
+    return res;
+}
+
+bool args(node &root)
+{
+    bool res = false;
+    node temp;
+    temp.add_attribute("ARGS");
+    //ARGS -> ARG , ARGS
+    //     -> ARG
+    //     -> NULL
+    if (tokens.front().value.front() == ')') {
+        
+        res = true;
+    }else{
+        if (arg(temp)) {
+            if (look_ahead_str({")"}, [](std::string s){return (s == ",");})) {
+                if (tokens.front().value == ",") {
+                    _operator(temp);
+                    if (args(temp)) {
+                        res = true;
+                    }else{
+                        std::cerr<<"Complie Error,Invalid arguments near "; cast_context(CAST_LENGTH);
+                    }
+                }
+            }else{
+                res = true;
+            }
+            
+        }
+    }
+    root.add_child(temp);
+    return res;
+}
+
+bool arg(node &root)
+{
+    bool res = false;
+    node temp;
+    temp.add_attribute("ARG");
+    //ARG -> EXP
+    if(exp(temp))
+    {
+        res = true;
+    }else{
+        std::cerr<<"Complie Error,Invalid argument near "; cast_context(CAST_LENGTH);
     }
     root.add_child(temp);
     return res;
@@ -632,7 +716,7 @@ bool def_exp(node &root)
     //DEF_EXP -> TYPE ASN_EXP
     //        -> TYPE PMRY_EXP
     if (type(temp)) {
-        if (look_ahead({";",")","}"}, [](std::string s){return (s == "=");})) {
+        if (look_ahead_str({";",")","}"}, is_asn_opt)) {
             if(asn_exp(temp)){
                 res = true;
             }else{
@@ -661,8 +745,8 @@ bool asn_exp(node &root)
     //        -> PMRY_EXP
     
     //temporary solution
-    if (look_ahead({";"}, is_asn_opt)) {
-        //ASN_EXP -> URY_EXP ASN_OPT ASN_EXP
+    if (look_ahead_str({";"}, is_asn_opt)) {
+        //ASN_EXP -> URY_EXP ASN_OPT EXP
         if (ury_exp(temp)) {//URY_EXP
             if (is_asn_opt(tokens.front().value)) {//ASN_OPT
                 _operator(temp);
@@ -673,7 +757,7 @@ bool asn_exp(node &root)
                 }
             }
         }
-    }else if(look_ahead({";"} , is_cmp_opt)){
+    }else if(look_ahead_str({";"} , is_cmp_opt)){
         //ASN_EXP -> CND_EXP
         if (cnd_exp(temp)) {
             res = true;
@@ -747,7 +831,7 @@ bool add_exp(node &root)
         }
     }else{
         //ADD_EXP -> NULL
-        temp.add_value("");
+        
         res = true;
     }
     root.add_child(temp);
@@ -777,7 +861,7 @@ bool mul_exp(node &root)
         }
     }else{
         //MUL_EXP -> NULL
-        temp.add_value("");
+        
         res = true;
     }
     root.add_child(temp);
@@ -794,7 +878,7 @@ bool post_exp(node &root)
     //         -> PMRY_EXP--
     //         -> PMRY_EXP[DGT]
     
-    if (look_ahead({";",")"},[](std::string s){ return s == "++" || s == "--" || s == "[" || s == "]"; })) {
+    if (look_ahead_str({";",")"},[](std::string s){ return s == "++" || s == "--" || s == "[" || s == "]"; })) {
         if (tokens[1].value == "++") {
             //POST_EXP -> POST_EXP++
             if (pmry_exp(temp)) {
@@ -812,6 +896,7 @@ bool post_exp(node &root)
                 }
             }
         }else if (tokens[1].value == "["){
+            
             //POST_EXP -> PMRY_EXP [ DGT ]
             if (pmry_exp(temp)) {
                 if (tokens.front().value.front() == '[') {
@@ -938,7 +1023,7 @@ bool is_cmp_opt(std::string opt)
     return (opt == "<" || opt == ">" || opt == "==" || opt == "==" || opt == ">=" || opt == "<=");
 }
 
-bool look_ahead(std::vector<std::string> stop_symbols,bool (*is_target)(std::string))
+bool look_ahead_str(std::vector<std::string> stop_symbols,bool (*is_target)(std::string))
 {
     bool has_target = false,met_stop_symbol = false;
     
@@ -956,7 +1041,6 @@ bool look_ahead(std::vector<std::string> stop_symbols,bool (*is_target)(std::str
         }
     }
     
-    
     for (int i = 0; i < n; ++i) {
         if (is_target(tokens[i].value)) {
             has_target = true;
@@ -964,6 +1048,34 @@ bool look_ahead(std::vector<std::string> stop_symbols,bool (*is_target)(std::str
         }
     }
     
+    return has_target;
+}
+
+bool look_ahead_func(std::vector<std::string> stop_symbols)
+{
+    bool has_target = false,met_stop_symbol = false;
+    
+    int n;
+    for (n = 0; n < tokens.size(); ++n)
+    {
+        for(std::string s : stop_symbols)
+        {
+            if (tokens[n].value == s) {
+                met_stop_symbol = true;
+            }
+        }
+        if (met_stop_symbol) {
+            break;
+        }
+    }
+    
+    for (int i = 0; i < n; ++i) {
+        if (tokens[i].type == types::IDT && tokens[i+1].value == "(") {
+            has_target = true;
+            break;
+        }
+    }
+
     return has_target;
 }
 
